@@ -519,62 +519,62 @@ public class App {
     }
        
 public static void jugarJuego(Protagonista prota, ArrayList<Enemigo> enemigos, ArrayList<Item> todosLosItems, int dificultad) {
-        int derrotados = 0;
-        boolean jugando = true;
+    int derrotados = 0;
+    boolean jugando = true;
 
-        while (prota.getProtagonista().getHealthPoints() > 0 && jugando==true) {
-            Enemigo e = enemigos.get((int) (Math.random() * enemigos.size()));
-            int hpEnemigo = e.getPersonaje().getHealthPoints();
-            System.out.println(e.toString());
+    // AÑADIDO: "&& jugando" para que el bucle se detenga si el usuario elige salir
+    while (prota.getProtagonista().getHealthPoints() > 0 && jugando) {
+        Enemigo e = enemigos.get((int) (Math.random() * enemigos.size()));
+        int hpEnemigo = e.getPersonaje().getHealthPoints();
+        System.out.println("\n--- ¡Aparece un " + e.getPersonaje().getName() + "! ---");
 
-            // Bucle de Combate
-        while (hpEnemigo > 0 && prota.getProtagonista().getHealthPoints() > 0) {
+        // Bucle de Combate
+        while (hpEnemigo > 0 && prota.getProtagonista().getHealthPoints() > 0 && jugando) {
             System.out.println("\nTU HP: " + prota.getProtagonista().getHealthPoints() + " | ORO: " + prota.getOro());
             System.out.println("Acciones disponibles: ATACAR, ITEM, SALIR");
             
-            String entrada = SC.nextLine().toUpperCase();
-            OPCION_JUGAR seleccion= OPCION_JUGAR.valueOf(entrada);
+            try {
+                String entrada = SC.nextLine().toUpperCase();
+                OPCION_JUGAR seleccion = OPCION_JUGAR.valueOf(entrada);
 
-            switch (seleccion) {
-                case ATACAR:
-                    hpEnemigo =hpEnemigo - prota.getProtagonista().getAttackPoints();
-                    System.out.println("¡Zas! Atacas. HP del " + e.getPersonaje().getName() + ": " + Math.max(0, hpEnemigo));
-                    break;
+                switch (seleccion) {
+                    case ATACAR:
+                        hpEnemigo -= prota.getProtagonista().getAttackPoints();
+                        System.out.println("¡Zas! Atacas. HP del " + e.getPersonaje().getName() + ": " + Math.max(0, hpEnemigo));
+                        break;
 
-                case ITEM:
-                    usarItemEnCombate(prota);
-                    // Nota: Usar un item también gasta el turno, por lo que el enemigo atacará después
-                    break;
+                    case ITEM:
+                        usarItemEnCombate(prota);
+                        break;
 
-                case SALIR:
-                    System.out.println("Huyes cobardemente del combate...");
-                    jugando = false;
-                    break;
-            }
-
-            // Turno del Enemigo (solo si sigue vivo y no hemos salido)
-            if (hpEnemigo > 0 && jugando==true) {
-                // Cálculo de defensa total (Base + Armadura)
-                int defensaTotal = prota.getProtagonista().getDefenPoints();
-                if (prota.getArmadura() != null) {
-                    defensaTotal += prota.getArmadura().getDefenPoints();
+                    case SALIR:
+                        System.out.println("Huyes cobardemente del combate...");
+                        jugando = false; // Esto rompe el bucle de combate y el de juego
+                        break;
                 }
 
-                int daño = Math.max(0, e.getPersonaje().getAttackPoints() - defensaTotal);
-                prota.getProtagonista().setHealthPoints(prota.getProtagonista().getHealthPoints() - daño);
-                
-                System.out.println(e.getPersonaje().getName() + " contraataca y te quita " + daño + " de vida.");
+                // Turno del Enemigo
+                if (hpEnemigo > 0 && jugando) {
+                    int defensaTotal = prota.getProtagonista().getDefenPoints();
+                    if (prota.getArmadura() != null) {
+                        defensaTotal += prota.getArmadura().getDefenPoints();
+                    }
+                    int daño = Math.max(0, e.getPersonaje().getAttackPoints() - defensaTotal);
+                    prota.getProtagonista().setHealthPoints(prota.getProtagonista().getHealthPoints() - daño);
+                    System.out.println(e.getPersonaje().getName() + " contraataca y te quita " + daño + " de vida.");
+                }
+            } catch (IllegalArgumentException ex) {
+                System.out.println("Opción no válida. Escribe ATACAR, ITEM o SALIR.");
             }
         }
 
-        // Procesar victoria
-        if (hpEnemigo <= 0 && prota.getProtagonista().getHealthPoints() > 0) {
+        // Procesar victoria (Solo si no hemos salido)
+        if (jugando && hpEnemigo <= 0 && prota.getProtagonista().getHealthPoints() > 0) {
             System.out.println("¡Has derrotado a " + e.getPersonaje().getName() + "!");
             derrotados++;
             e.setVecesDerrotado(e.getVecesDerrotado() + 1);
             prota.setOro(prota.getOro() + e.getOroDerrotado());
             
-            // Abrir la tienda tras la victoria
             abrirTienda(prota, todosLosItems, dificultad);
         }
     }
@@ -605,49 +605,42 @@ public static void usarItemEnCombate(Protagonista p) {
     }
 
 public static void abrirTienda(Protagonista auxProta, ArrayList<Item> todosMisItems, int dif) {
-        System.out.println("\n--- TIENDA --- Oro: " + auxProta.getOro());
-        ArrayList<Item> oferta = new ArrayList<>();
+    System.out.println("\n--- TIENDA --- Oro: " + auxProta.getOro());
+    ArrayList<Item> oferta = new ArrayList<>();
 
-        // Lógica simplificada: 3 items al azar para la oferta
-        for(int i=0; i<3; i++) {
-            oferta.add(todosMisItems.get((int)(Math.random()*todosMisItems.size())));
-        }
-        boolean haComprado = false;
+    for(int i=0; i<3; i++) {
+        oferta.add(todosMisItems.get((int)(Math.random()*todosMisItems.size())));
+    }
+
+    boolean tiendaAbierta = true;
+    while (tiendaAbierta) {
+        System.out.println("\nOferta del día:");
         for (int i = 0; i < oferta.size(); i++) {
-            System.out.println(i + ". " + oferta.get(i).getNombre() + " (" + oferta.get(i).getPrize() + " oro)");
+            System.out.println((i + 1) + ". " + oferta.get(i).getNombre() + " (" + oferta.get(i).getPrize() + " oro)");
         }
-        boolean tiendaAbierta = true; //sigoComprando? Sí, mientras que no se haya elegido el artículo a comprar
-        boolean yaComproEnDificil = false; //compruebo si ha comprado en esta vuelta del juego
-        while (tiendaAbierta==true &&yaComproEnDificil==false) {
-            System.out.println("¿Qué quieres comprar? (0 para salir)");
-            int comp = SC.nextInt(); SC.nextLine();
-           if (comp == 0) {
-                    tiendaAbierta = false;
-                    System.out.println("Saliendo de la tienda...");
-                } else if (comp > 0 && comp <= oferta.size()) {
-                    // Solo entramos aquí si el número es válido para un objeto
-                    Item it = oferta.get(comp - 1); // Usamos -1 porque los arrays empiezan en 0
-                    
-                    if (auxProta.getOro() >= it.getPrize()) {
-                        // ... lógica de compra ...
-                    }
-                } else {
-                    System.out.println("Opción no válida, intenta de nuevo.");
-            }
-            Item it = oferta.get(comp);
+        System.out.println("0. Salir de la tienda");
+        
+        int comp = SC.nextInt(); SC.nextLine();
+
+        if (comp == 0) {
+            tiendaAbierta = false;
+        } else if (comp > 0 && comp <= oferta.size()) {
+            Item it = oferta.get(comp - 1);
             if (auxProta.getOro() >= it.getPrize()) {
                 auxProta.setOro(auxProta.getOro() - it.getPrize());
                 auxProta.getBolsa().add(it);
-                System.out.println("Comprado: " + it.getNombre());
-                if (dif == 2) {
-                    yaComproEnDificil = true; // Esto hará que el bucle termine en la siguiente vuelta
-                    System.out.println("Modo Difícil: Solo se permite una compra por vez abierta tienda.");
+                System.out.println("¡Comprado: " + it.getNombre() + "!");
+                
+                if (dif == 2) { // Si es difícil, solo puede comprar uno
+                    tiendaAbierta = false;
+                    System.out.println("Modo Difícil: Solo se permite una compra.");
                 }
             } else {
                 System.out.println("No tienes suficiente oro.");
             }
+        } else {
+            System.out.println("Opción no válida.");
         }
-
-
+    }
 }
 }
